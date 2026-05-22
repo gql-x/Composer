@@ -15,7 +15,9 @@
 		"./composer": "./src/composer.js",
 		"./db": "./src/db.js"
 	},
-	"repository": "gql-x/composer",
+	"repository": {
+		"url": "git+https://github.com/gql-x/composer.git"
+	},
 	"bugs": {
 		"url": "https://github.com/gql-x/composer/issues",
 		"email": "getify@gmail.com"
