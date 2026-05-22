@@ -8,12 +8,12 @@
 		"test": "node test/runner.js"
 	},
 	"browser": {
-		"@gql-x/composer": "./dist/composer.js"
+		"@gql-x/composer": "./src/composer.js"
 	},
 	"exports": {
-		".": "./dist/composer.js",
-		"./composer": "./dist/composer.js",
-		"./db": "./dist/db.js"
+		".": "./src/composer.js",
+		"./composer": "./src/composer.js",
+		"./db": "./src/db.js"
 	},
 	"repository": "gql-x/composer",
 	"bugs": {
