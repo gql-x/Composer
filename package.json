@@ -1,0 +1,26 @@
+{
+	"name": "@gql-x/composer",
+	"description": "An extensible DSL for composing GraphQL strings with nicer DX",
+	"version": "0.0.0-pre-202605221752",
+	"main": "./src/composer.js",
+	"type": "module",
+	"scripts": {
+		"test": "node test/runner.js"
+	},
+	"browser": {
+		"@gql-x/composer": "./dist/composer.js"
+	},
+	"exports": {
+		".": "./dist/composer.js",
+		"./composer": "./dist/composer.js",
+		"./db": "./dist/db.js"
+	},
+	"repository": "gql-x/composer",
+	"bugs": {
+		"url": "https://github.com/gql-x/composer/issues",
+		"email": "getify@gmail.com"
+	},
+	"homepage": "https://github.com/gql-x/composer",
+	"author": "Kyle Simpson <getify@gmail.com>",
+	"license": "MIT"
+}

@@ -1,0 +1,210 @@
+import assert from "node:assert";
+import { module } from "./runner.js";
+import { createComposer, } from "@gql-x/composer";
+
+export const test = module("directives");
+
+var { $f, $t, $v, $m, } = createComposer();
+
+
+// ************************
+// $v
+// ************************
+
+test("$v 2-arg form", () => {
+	assert.deepEqual(
+		$v("docID","ID"),
+		{ docID: "ID" }
+	);
+});
+
+test("$v 3-arg form", () => {
+	assert.deepEqual(
+		$v("docID","userDocID","ID"),
+		{ docID: { userDocID: "ID" } }
+	);
+});
+
+test("$v compose merges chunks", () => {
+	assert.deepEqual(
+		$v(
+			$v("foo","String"),
+			$v("bar","Int")
+		),
+		{ foo: "String", bar: "Int" }
+	);
+});
+
+test("$v with $t token as type", () => {
+	assert.deepEqual(
+		$v("sinceDate",$t.DateTime),
+		{ sinceDate: "DateTime" }
+	);
+});
+
+
+// ************************
+// $v — errors
+// ************************
+
+test("$v() throws with no args", () => {
+	assert.throws(() => $v());
+});
+
+test("$v() throws with wrong arg types", () => {
+	assert.throws(() => $v("foo",42));
+});
+
+
+// ************************
+// $m
+// ************************
+
+test("$m 2-arg number value", () => {
+	assert.deepEqual(
+		$m("limit",50),
+		{ limit: 50 }
+	);
+});
+
+test("$m 2-arg string value", () => {
+	assert.deepEqual(
+		$m("status","active"),
+		{ status: "active" }
+	);
+});
+
+test("$m 2-arg boolean value", () => {
+	assert.deepEqual(
+		$m("isEnabled",true),
+		{ isEnabled: true }
+	);
+});
+
+test("$m 2-arg null value", () => {
+	assert.deepEqual(
+		$m("deletedAt",null),
+		{ deletedAt: null }
+	);
+});
+
+test("$m multi-chunk siblings merged under key", () => {
+	assert.deepEqual(
+		$m("order",
+			$m("title","asc"),
+			$m("year","desc")
+		),
+		{ order: { title: "asc", year: "desc" } }
+	);
+});
+
+test("$m nested calls", () => {
+	assert.deepEqual(
+		$m("order",
+			$m("title",
+				$m("direction","asc")
+			)
+		),
+		{ order: { title: { direction: "asc" } } }
+	);
+});
+
+
+// ************************
+// $m — errors
+// ************************
+
+test("$m() throws with no args", () => {
+	assert.throws(() => $m());
+});
+
+test("$m() throws with only name", () => {
+	assert.throws(() => $m("foo"));
+});
+
+test("$m() throws with mixed chunk and non-chunk trailing args", () => {
+	assert.throws(() => $m("foo",$m("a",1),"notAChunk"));
+});
+
+
+// ************************
+// $t
+// ************************
+
+test("$t.NAME returns bare-name token", () => {
+	var tok = $t.DESC;
+	assert.equal(typeof tok, "object");
+	assert.equal(String(tok), "DESC");
+});
+
+test("$t caches tokens (same identity for same name)", () => {
+	assert.equal($t.DESC, $t.DESC);
+});
+
+test("$t.$varName returns $-prefixed token", () => {
+	var tok = $t.$email;
+	assert.equal(String(tok), "$email");
+});
+
+test("$t reserved property names return undefined", () => {
+	assert.equal($t.then, undefined);
+	assert.equal($t.toString, undefined);
+	assert.equal($t.constructor, undefined);
+});
+
+test("$t invalid GQL name returns undefined", () => {
+	assert.equal($t["bad-name"], undefined);
+	assert.equal($t["123abc"], undefined);
+});
+
+test("$t.$invalid returns undefined", () => {
+	assert.equal($t["$bad-name"], undefined);
+	assert.equal($t["$123abc"], undefined);
+});
+
+test("$t tokens are isolated across composer instances", () => {
+	var { $t: $tA, } = createComposer();
+	var { $t: $tB, } = createComposer();
+	assert.notEqual($tA.DESC, $tB.DESC);
+	// but both stringify to the same name
+	assert.equal(String($tA.DESC), String($tB.DESC));
+});
+
+
+// ************************
+// $f — function-call mode (errors)
+// ************************
+
+test("$f() throws with no args", () => {
+	assert.throws(() => $f());
+});
+
+test("$f() throws with invalid first arg type", () => {
+	assert.throws(() => $f(42));
+});
+
+test("$f() throws with invalid GQL name", () => {
+	assert.throws(() => $f("bad-name"));
+});
+
+test("$f() throws with invalid GQL name for field", () => {
+	assert.throws(() => $f("alias","bad-name"));
+});
+
+
+// ************************
+// $f — tagged template (errors)
+// ************************
+
+test("$f tagged more than twice throws", () => {
+	assert.throws(() => {
+		$f`alias``field``another`;
+	});
+});
+
+test("$f interpolation must come after name throws", () => {
+	assert.throws(() => {
+		var obj = {};
+		$f`name ${obj} extra`;
+	});
+});
