@@ -203,7 +203,7 @@ The third render-protocol seam is on the root chunk itself. If the root chunk ha
 
 This is used when a plugin needs to rewrite the root field's *appearance* entirely — for example, when the root field is an aggregate function applied to a collection (`COUNT(User: { ... })`) rather than a direct field reference (`User { ... }`). In that case, the root chunk's `render` function returns a custom `{ rootField, rootAlias }` shape that composer's renderer uses instead of its defaults.
 
-Unlike the previous two seams, this one is harder to motivate with a small standalone example, because the use case (overriding root rendering) doesn't have a clean one-liner. `@gql-x/plugin-defradb`'s 3-arg `root(field, over, alias)` form is the working production example. If you find yourself needing to rewrite how the root field renders, that's the pattern to study.
+Unlike the previous two seams, this one is harder to motivate with a small standalone example, because the use case (overriding root rendering) doesn't have a clean one-liner. `@gql-x/plugin-defradb`'s 3-arg `root(field, alias, over)` form is the working production example. If you find yourself needing to rewrite how the root field renders, that's the pattern to study.
 
 ## The Abstract DB Layer
 
