@@ -20,7 +20,7 @@ A third theme runs throughout: meaning is conveyed by explicit names (`selection
 
 ## Getting Started
 
-Composer is a factory-producing module: each call to `createComposer()` returns its own independent instance with its own closure-private state (token symbols, internal WeakMaps, caches). Two instances don't share tokens — this isolation is deliberate and non-negotiable.
+Composer is a factory-producing module: each call to `createComposer()` returns its own independent instance with its own closure-private state (token symbols, internal WeakMaps, caches).
 
 ```js
 import { createComposer } from "@gql-x/composer";
@@ -34,9 +34,7 @@ var {
 } = createComposer();
 ```
 
-The destructured names above are the full public API surface of a composer instance. Everything else in this README is documenting one of these.
-
-If you don't intend to use a particular helper, you can omit it from the destructuring — there's no penalty for selective imports.
+**NOTE:** All the destructured API methods shown above are bound to that instance of the Composer, and *cannot* safely be mixed with helpers from other Composer instances. Generally, though, you'll only create one Composer instance in your application.
 
 ```js
 // minimal: just the builder + the bits used in the simplest query
@@ -46,12 +44,16 @@ queryBuilder(
     root("ping"),
     selectionSet("ok")
 )
-// → { text: "{ ping { ok } }", operationName: "", resultName: "ping" }
+// {
+//    text: "{ ping { ok } }",
+//    operationName: "",
+//    resultName: "ping"
+// }
 ```
 
 ## At a Glance
 
-Suppose you want to write a GraphQL query like the one below, fetching a user by ID with a date-bounded sub-selection of recent posts:
+Consider a GraphQL query like the one below; fetching a user by ID with a date-bounded sub-selection of recent posts:
 
 ```graphql
 query GetUser(
@@ -72,20 +74,14 @@ query GetUser(
 A few things stand out as friction:
 
 * **Variable duplication.** `$userID` is declared once but its definition (`$userID: ID`) lives far away from its use site. Same for `$sinceDate`.
+
 * **Sigil bookkeeping.** Every variable carries a `$` everywhere it appears. Easy to typo, easy to forget.
+
 * **Nesting tax.** Field aliases, field-level arguments, and sub-selections each have their own syntactic shape to remember.
 
-Here's the equivalent using the composer:
+Here's the Composer equivalent:
 
 ```js
-import { createComposer } from "@gql-x/composer";
-
-var {
-    $f, $v, $m,
-    varArgs, selectionSet, root,
-    queryBuilder,
-} = createComposer();
-
 queryBuilder(
     { operationName: "GetUser" },
     root("user"),
@@ -103,15 +99,11 @@ queryBuilder(
 )
 ```
 
-For the rest of this README, assume the helpers used in any given example have been destructured from a `createComposer()` call as shown above.
-
-Variables are declared inline at their use sites, then hoisted into the parameter list (and de-duplicated) by the builder, so you never have to type both a separate parameter declaration and the use-site reference.
-
-The rest of this README walks through each helper and the full query-builder surface.
+Variables are declared inline where used, then hoisted into the parameter list (and de-duplicated/de-conflicted) by `queryBuilder()`, so you never have to type both a separate parameter declaration and the use-site reference.
 
 ## Fluent Helpers vs. Object Literal Forms
 
-The composer provides two families of helpers, and both produce plain JS object structures that the query-builder consumes:
+Composer provides two families of helpers, and both produce plain JS object structures that the query-builder consumes:
 
 1. **Option-key helpers** like `varArgs(..)`, `litArgs(..)`, `varDefs(..)`, `selectionSet(..)`, `root(..)`. Each produces a single-property object keyed by its option name. They're passed as variadic arguments to `queryBuilder(..)`.
 
@@ -121,7 +113,7 @@ The composer provides two families of helpers, and both produce plain JS object 
 
     In other words, `$m(..)` produces `{ field: value }`.
 
-Both families are pure object-shape sugar. Every helper has an equivalent object literal form, and the query-builder accepts either form interchangeably. Mix and match freely.
+Both families are pure object-shape sugar. Every helper has an equivalent object literal form, and the query-builder accepts either form interchangeably.
 
 ```js
 // helper form (recommended)
@@ -146,7 +138,7 @@ queryBuilder(
 )
 ```
 
-The object literal forms are the base. The helpers exist as sugar on top, to reduce repetition and visual syn-tax. If a helper doesn't fit a particular shape cleanly, drop down to an object literal for that piece and keep using helpers elsewhere.
+The object literal forms are the base. The helpers exist as sugar on top, to reduce repetition and visual syn-tax. If a helper doesn't fit a particular shape cleanly, drop down to an object literal for that bit.
 
 ## Query Builder Options
 
@@ -234,7 +226,7 @@ The following options are recognized:
 
 ## Chunk-Producing Helpers
 
-### `$v` — Variable Leaf Specs
+### `$v`: Variable Leaf Specs
 
 `$v` builds variable leaf-specs for `varArgs` and `varDefs`.
 
@@ -271,7 +263,7 @@ $v("id","userID","ID")
 $v("id",$t.ID)
 ```
 
-### `$t` — Bare-Name Tokens
+### `$t`: Bare-Name Tokens
 
 `$t` is a proxy that produces bare-name tokens for use in literal-based argument positions.
 
@@ -289,7 +281,7 @@ $t.$orderBy  // renders as: $orderBy
 
 Bare tokens can appear anywhere a literal value is expected — inside `litArgs`, as type strings in `$v` / variable specs, etc.
 
-### `$m` — Map Literals
+### `$m`: Map Literals
 
 `$m` builds object structures, useful in places where the literal data shape would otherwise require object-literal syntax.
 
@@ -346,11 +338,11 @@ selectionSet: {
 }
 ```
 
-### `$f` — Field-Level References
+### `$f`: Field-Level References
 
 `$f` produces field-level reference tokens for use in `selectionSet(..)`. It supports field aliases, field-level arguments, and pairs with `$m` for sub-selections.
 
-`$f` supports two equivalent calling styles. The tagged-template form is JS-specific and reads closer to GraphQL's own alias syntax. The function-call form is conventional JS and is the basis for ports to other languages (Go, Rust, etc.).
+`$f` supports two equivalent calling styles. The tagged-template form (``` $f`alias``field` ```) is JS-specific and is more terse/closer to GraphQL's own alias syntax. The function-call form (`$f(alias,field)`) is conventional JS and is the basis for ports to other languages (Go, Rust, etc.).
 
 Both forms produce identical tokens and work interchangeably in all positions: `selectionSet(..)`, computed property keys (`{ [$f(...)]: subSel }`), and `$m(..)`.
 
@@ -388,7 +380,7 @@ $f("myPosts", "posts", varArgs($v("since","DateTime")))
 
 The choice between forms is purely stylistic. The tag form is more compact and reads left-to-right as `alias: field` — matching GraphQL's own rendering. The function-call form is immediately readable to anyone familiar with conventional JS and maps directly to how other language ports express the same concept.
 
-### Field-Level Selections
+#### Field-Level Selections
 
 To alias a field name in a selection-set:
 
@@ -481,9 +473,9 @@ Produces:
 
 ## Extending Composer
 
-Composer is built to be extended. Higher-level layers — backend-flavored DSLs, opinionated query helpers, transport-coupled clients — can register against composer's internals to add new syntax, new combinators, and new rendering behavior, without composer itself needing to know about any of it.
+Composer is built to be extended. Higher-level layers -- backend-flavored DSLs, opinionated query helpers, transport-coupled clients -- can register against composer's internals to add new syntax, new combinators, and new rendering behavior, without composer itself needing to know about any of it.
 
-This package also ships an abstract DB-shaped layer (`@gql-x/composer/db`) that sits between bare composer and a fully-realized backend-specific package. It adds auto-prefixing of schema names (handy for backends without native namespacing), a pluggable transport spread, and a `decorate` hook for layering on backend-specific helpers. It functions more like an interface or abstract base class than a finished tool — you wouldn't normally instantiate it directly. (You *could*, if schema-name prefixing is the one thing you wanted; nothing prevents it.) Its real audience is the package one layer up.
+This package also ships an abstract DB-shaped layer (`@gql-x/composer/db`) that sits between bare composer and a fully-realized backend-specific package. It adds auto-prefixing of schema names (handy for backends without native namespacing), a pluggable transport spread, and a `decorate` hook for layering on backend-specific helpers. It functions more like an interface or abstract base class than a direct tool; you wouldn't normally instantiate it directly.
 
 The extension points, the DB layer's full surface, and the render protocol that makes deep customization possible are all documented in [EXTENSIBILITY.md](./EXTENSIBILITY.md).
 
