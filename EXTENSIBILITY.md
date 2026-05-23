@@ -225,7 +225,7 @@ The DB layer exports a single function: `registerPlugin(opts)`. It returns `{ ap
 import { registerPlugin as dbRegisterPlugin } from "@gql-x/composer/db";
 
 var { api, internals } = dbRegisterPlugin({
-    NAME_PREFIX: "Dev_",
+    namePrefix: "Dev_",
     nonPrefixedTypes: [ "JSON", "DateTime" ],
     transport: {
         exec(query, args) { /* .. */ },
@@ -244,7 +244,7 @@ var { api, internals } = dbRegisterPlugin({
 });
 ```
 
-**`NAME_PREFIX`** is the schema-name prefix. With `"Dev_"`, the DB layer's `query()` method will produce GraphQL with root fields like `Dev_User` (aliased back to `User`), and variable types like `Dev_UserInput`.
+**`namePrefix`** is the schema-name prefix. With `"Dev_"`, the DB layer's `query()` method will produce GraphQL with root fields like `Dev_User` (aliased back to `User`), and variable types like `Dev_UserInput`.
 
 **`nonPrefixedTypes`** extends the default list of types the prefixer leaves alone. The built-in defaults are the GraphQL spec primitives (`Int`, `Float`, `String`, `Boolean`, `ID`); pass additional names here for any custom types your backend exposes that shouldn't be prefixed (`JSON`, `DateTime`, etc.).
 
@@ -257,8 +257,8 @@ var { api, internals } = dbRegisterPlugin({
 The returned `api` exposes a `prefix(namePrefix)` method that returns a *sibling* API with a different prefix. The original API is unchanged.
 
 ```js
-var devAPI = api;                    // NAME_PREFIX: "Dev_"
-var prodAPI = api.prefix("Prod_");   // sibling, NAME_PREFIX: "Prod_"
+var devAPI = api;                    // namePrefix: "Dev_"
+var prodAPI = api.prefix("Prod_");   // sibling, namePrefix: "Prod_"
 ```
 
 Re-prefixing re-runs the `decorate` hook against the new prefixed API, so any plugin-specific helpers the decorator attaches remain attached on the re-prefixed sibling. Plugin authors can rely on this: `prefix(...)` produces a fully-decorated sibling, not a stripped-down one.

@@ -9,7 +9,7 @@ function normalize(str) {
 }
 
 test("registerPlugin() returns the right shape", () => {
-	var reg = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var reg = registerPlugin({ namePrefix: "Dev_", });
 	assert.ok(!!reg.api,"has api");
 	assert.deepEqual(Object.keys(reg.api),[ "prefix", "query" ],"has api methods");
 	assert.ok(!!reg.internals,"has internals");
@@ -28,7 +28,7 @@ test("api.query() with plain-string selection", () => {
 });
 
 test("api.query() with namePrefix applied", () => {
-	var { api } = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
 	var { text, operationName, resultName } = api.query({
 		root: { field: "User" },
 		operationName: null,
@@ -39,7 +39,7 @@ test("api.query() with namePrefix applied", () => {
 });
 
 test("api.query() with caller-passed nonPrefixedTypes merging", () => {
-	var { api } = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
 	var { text, operationName, resultName } = api.query({
 		nonPrefixedTypes: [ "User" ],
 		root: { field: "User" },
@@ -51,7 +51,7 @@ test("api.query() with caller-passed nonPrefixedTypes merging", () => {
 });
 
 test("api.prefix() returns a sibling API with different prefix", () => {
-	var { api } = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
 	var otherApi = api.prefix("v2_");
 	var { text, operationName, resultName } = otherApi.query({
 		root: { field: "User" },
@@ -63,7 +63,7 @@ test("api.prefix() returns a sibling API with different prefix", () => {
 });
 
 test("original api's prefix unchanged after re-prefix", () => {
-	var { api } = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
 	var otherApi = api.prefix("v2_");
 	var { text, operationName, resultName } = api.query({
 		root: { field: "User" },
@@ -154,7 +154,7 @@ test("decorate() plugin callback", () => {
 });
 
 test("GQL builtin type not prefixed in varDefs", () => {
-	var { api } = registerPlugin({ NAME_PREFIX: "Dev_", });
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
 	var { text, } = api.query({
 		root: { field: "User" },
 		operationName: "User",

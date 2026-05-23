@@ -25,7 +25,7 @@ var GQL_BUILTIN_TYPES = [
 // *****************************
 
 function registerPlugin({
-	NAME_PREFIX = "",
+	namePrefix = "",
 	nonPrefixedTypes = null,
 	transport = null,
 	decorate = null,
@@ -37,7 +37,7 @@ function registerPlugin({
 		...(nonPrefixedTypes || []),
 	];
 
-	var api = prefix(NAME_PREFIX);
+	var api = prefix(namePrefix);
 
 	var internals = {
 		composer: composerInternals,
