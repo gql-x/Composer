@@ -466,7 +466,6 @@ function buildComposer(opts = {}) {
 			nonPrefixedTypes = [],
 			kind = "query",
 			operationName = "",
-			action = "",
 			varArgs = null,
 			litArgs = null,
 			varDefs = null,
@@ -558,11 +557,11 @@ function buildComposer(opts = {}) {
 				rootMeta.field :
 				`${namePrefix}${rootMeta.field}`
 		);
-		var rootField = `${action}${rootFieldBase}`;
+		var rootField = rootFieldBase;
 		var rootAlias = (
 			rootMeta.alias != null ?
 				rootMeta.alias :
-				(rootField !== rootMeta.field ? `${action}${rootMeta.field}` : null)
+				(rootField !== rootMeta.field ? rootMeta.field : null)
 		);
 
 		// dispatch to root chunk's render() if present — lets defradb override
@@ -571,7 +570,6 @@ function buildComposer(opts = {}) {
 			let result = root.render({
 				namePrefix,
 				nonPrefixedTypes,
-				action,
 				field: rootMeta.field,
 				alias: rootMeta.alias,
 				normalizeType: t => normalizeType(t,namePrefix,nonPrefixedTypes),
