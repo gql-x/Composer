@@ -5,7 +5,10 @@ import { createComposer, } from "@gql-x/composer";
 export const test = module("builder");
 
 var {
-	queryBuilder,
+	raw,
+	query,
+	mutation,
+	subscription,
 	$f,
 	$t,
 	$v,
@@ -15,6 +18,7 @@ var {
 	varDefs,
 	selectionSet,
 	root,
+	operationName,
 } = createComposer();
 
 function normalize(str) {
@@ -22,16 +26,16 @@ function normalize(str) {
 }
 
 test("operationName null omits name when no var defs", () => {
-	var { text, operationName, } = queryBuilder(
-		{ operationName: null, },
+	var { text, opName, } = query(
+		operationName(null),
 		root("User")
 	);
-	assert.equal(operationName, null);
+	assert.equal(opName, null);
 	assert.ok(text.startsWith("query {"));
 });
 
-test("kind mutation", () => {
-	var { text, } = queryBuilder({
+test("raw.kind mutation", () => {
+	var { text, } = raw({
 		kind: "mutation",
 		root: { field: "User" }
 	});
@@ -39,28 +43,28 @@ test("kind mutation", () => {
 });
 
 test("operationName null falls back to Query when var defs present", () => {
-	var { text, operationName, } = queryBuilder(
-		{ operationName: null, },
+	var { text, opName, } = query(
+		operationName(null),
 		root("User"),
 		varDefs($v("foo","String"))
 	);
-	assert.equal(operationName, "Query");
+	assert.equal(opName, "Query");
 	assert.ok(text.startsWith("query Query("));
 });
 
 test("operationName null falls back to Mutation for mutation kind", () => {
-	var { text, operationName, } = queryBuilder(
-		{ kind: "mutation", operationName: null, },
+	var { text, opName, } = mutation(
+		operationName(null),
 		root("User"),
 		varDefs($v("foo","String"))
 	);
-	assert.equal(operationName, "Mutation");
+	assert.equal(opName, "Mutation");
 	assert.ok(text.startsWith("mutation Mutation("));
 });
 
 test("varArgs renders variable args", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varArgs($v("limit","limitCount","Int"))
 	);
@@ -69,8 +73,8 @@ test("varArgs renders variable args", () => {
 });
 
 test("varDefs adds variable to parameter list without arg position", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varDefs($v("sinceDate","DateTime"))
 	);
@@ -79,7 +83,7 @@ test("varDefs adds variable to parameter list without arg position", () => {
 });
 
 test("litArgs renders literal arg", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		litArgs($m("limit",50))
 	);
@@ -87,8 +91,8 @@ test("litArgs renders literal arg", () => {
 });
 
 test("varArgs 2-arg form", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varArgs($v("limit","Int"))
 	);
@@ -97,16 +101,16 @@ test("varArgs 2-arg form", () => {
 });
 
 test("root with alias", () => {
-	var { text, resultName, } = queryBuilder(
-		{ operationName: null, },
+	var { text, resName, } = raw(
+		operationName(null),
 		root("User","Account")
 	);
-	assert.equal(resultName, "Account");
+	assert.equal(resName, "Account");
 	assert.ok(text.includes("Account: User"));
 });
 
 test("$t bare token in litArgs renders without quotes", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		litArgs($m("order",$m("createdAt",$t.DESC)))
 	);
@@ -114,8 +118,8 @@ test("$t bare token in litArgs renders without quotes", () => {
 });
 
 test("$t.$varName manual variable reference in litArgs", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varDefs($v("limitCount","Int")),
 		litArgs($m("limit",$t.$limitCount))
@@ -125,7 +129,7 @@ test("$t.$varName manual variable reference in litArgs", () => {
 });
 
 test("selectionSet renders string fields", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		selectionSet("username","createdAt")
 	);
@@ -133,7 +137,7 @@ test("selectionSet renders string fields", () => {
 });
 
 test("selectionSet $f alias", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		selectionSet(
 			$f`ownerEmail``email`
@@ -143,8 +147,8 @@ test("selectionSet $f alias", () => {
 });
 
 test("selectionSet null omits block", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		selectionSet($f.noSelection)
 	);
@@ -152,7 +156,7 @@ test("selectionSet null omits block", () => {
 });
 
 test("$f field-level litArgs renders correctly", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		selectionSet(
 			$m(
@@ -165,7 +169,7 @@ test("$f field-level litArgs renders correctly", () => {
 });
 
 test("$f field-level varArgs hoists var def", () => {
-	var { text, } = queryBuilder(
+	var { text, } = query(
 		root("User"),
 		selectionSet(
 			$m(
@@ -179,7 +183,7 @@ test("$f field-level varArgs hoists var def", () => {
 });
 
 test("selectionSet legacy string-key sub-selection", () => {
-	var { text, } = queryBuilder(
+	var { text, } = raw(
 		root("User"),
 		selectionSet(
 			{ books: [ "title", "author" ] }
@@ -189,7 +193,7 @@ test("selectionSet legacy string-key sub-selection", () => {
 });
 
 test("variable deduplication across operation and field level", () => {
-	var { text, } = queryBuilder(
+	var { text, } = query(
 		root("User"),
 		varArgs($v("limit","limitCount","Int")),
 		selectionSet(
@@ -206,8 +210,8 @@ test("variable deduplication across operation and field level", () => {
 });
 
 test("normalizeType handles array type [String]", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varArgs($v("tags","[String]"))
 	);
@@ -216,8 +220,8 @@ test("normalizeType handles array type [String]", () => {
 });
 
 test("normalizeType handles required type Int!", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varArgs($v("limit","limitCount","Int!"))
 	);
@@ -226,8 +230,8 @@ test("normalizeType handles required type Int!", () => {
 });
 
 test("normalizeType handles array type [String!]!", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", },
+	var { text, } = query(
+		operationName("User"),
 		root("User"),
 		varArgs($v("tags","[String!]!"))
 	);
@@ -236,8 +240,8 @@ test("normalizeType handles array type [String!]!", () => {
 });
 
 test("renderLitValue array form in litArgs", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "Get", },
+	var { text, } = raw(
+		operationName("Get"),
 		root("User"),
 		litArgs($m("ids",["abc","def","ghi"]))
 	);
@@ -263,11 +267,11 @@ test("$f interpolation must come after name throws", () => {
 // ************************
 
 test("$f() parity: alias only", () => {
-	var tagQuery = queryBuilder(
+	var tagQuery = raw(
 		root("User"),
 		selectionSet($f`ownerEmail``email`)
 	);
-	var fnQuery = queryBuilder(
+	var fnQuery = raw(
 		root("User"),
 		selectionSet($f("ownerEmail","email"))
 	);
@@ -275,11 +279,11 @@ test("$f() parity: alias only", () => {
 });
 
 test("$f() parity: alias + field + varArgs", () => {
-	var tagQuery = queryBuilder(
+	var tagQuery = raw(
 		root("User"),
 		selectionSet($f`myPosts``posts ${varArgs($v("limit","limitCount","Int"))}`)
 	);
-	var fnQuery = queryBuilder(
+	var fnQuery = raw(
 		root("User"),
 		selectionSet($f("myPosts","posts",varArgs($v("limit","limitCount","Int"))))
 	);
@@ -287,13 +291,13 @@ test("$f() parity: alias + field + varArgs", () => {
 });
 
 test("$f() parity: computed property key with sub-selection", () => {
-	var tagQuery = queryBuilder(
+	var tagQuery = raw(
 		root("User"),
 		selectionSet({
 			[$f`myPosts``posts ${varArgs($v("limit","limitCount","Int"))}`]: [ "title", "publishedAt" ]
 		})
 	);
-	var fnQuery = queryBuilder(
+	var fnQuery = raw(
 		root("User"),
 		selectionSet({
 			[$f("myPosts","posts",varArgs($v("limit","limitCount","Int")))]: [ "title", "publishedAt" ]
@@ -303,13 +307,13 @@ test("$f() parity: computed property key with sub-selection", () => {
 });
 
 test("$f() parity: via $m with sub-selection", () => {
-	var tagQuery = queryBuilder(
+	var tagQuery = raw(
 		root("User"),
 		selectionSet(
 			$m($f`myPosts``posts ${varArgs($v("limit","limitCount","Int"))}`,[ "title", "publishedAt" ])
 		)
 	);
-	var fnQuery = queryBuilder(
+	var fnQuery = raw(
 		root("User"),
 		selectionSet(
 			$m($f("myPosts","posts",varArgs($v("limit","limitCount","Int"))),[ "title", "publishedAt" ])
@@ -319,16 +323,16 @@ test("$f() parity: via $m with sub-selection", () => {
 });
 
 test("$f() parity: variable deduplication preserved across function-call form", () => {
-	var tagQuery = queryBuilder(
-		{ operationName: "Get", },
+	var tagQuery = raw(
+		operationName("Get"),
 		root("User"),
 		selectionSet(
 			$f`myPosts``posts ${varArgs($v("limit","limitCount","Int"))}`,
 			$f`myReplies``replies ${varArgs($v("limit","limitCount","Int"))}`
 		)
 	);
-	var fnQuery = queryBuilder(
-		{ operationName: "Get", },
+	var fnQuery = raw(
+		operationName("Get"),
 		root("User"),
 		selectionSet(
 			$f("myPosts","posts",varArgs($v("limit","limitCount","Int"))),
@@ -339,15 +343,15 @@ test("$f() parity: variable deduplication preserved across function-call form", 
 });
 
 test("invalid GQL name for root field throws", () => {
-	assert.throws(() => queryBuilder(
-		{ operationName: null, },
+	assert.throws(() => raw(
+		operationName(null),
 		root("bad-name")
 	));
 });
 
 test("$t token accepted as type in $v", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "Get", },
+	var { text, } = raw(
+		operationName("Get"),
 		root("User"),
 		varDefs($v("sinceDate",$t.DateTime))
 	);
@@ -355,8 +359,9 @@ test("$t token accepted as type in $v", () => {
 });
 
 test("normalizeType does not double-prefix already-prefixed type", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", namePrefix: "Dev_", },
+	var { text, } = raw(
+		{ namePrefix: "Dev_", },
+		operationName("User"),
 		root("User"),
 		varDefs($v("input","Dev_UserInput"))
 	);
@@ -365,8 +370,9 @@ test("normalizeType does not double-prefix already-prefixed type", () => {
 });
 
 test("namePrefix applies to non-builtin type in varDefs", () => {
-	var { text, } = queryBuilder(
-		{ operationName: "User", namePrefix: "Dev_", },
+	var { text, } = raw(
+		{ namePrefix: "Dev_", },
+		operationName("User"),
 		root("User"),
 		varDefs($v("input","UserInput"))
 	);
@@ -375,11 +381,37 @@ test("namePrefix applies to non-builtin type in varDefs", () => {
 
 test("conflicting type definitions throw", () => {
 	assert.throws(() => {
-		queryBuilder(
-			{ operationName: "User", },
+		raw(
+			operationName("User"),
 			root("User"),
 			varArgs($v("limit","limitCount","Int")),
 			varDefs($v("limitCount","String"))
 		);
 	});
+});
+
+test("mutation() presets kind:mutation", () => {
+    var { kind, text } = mutation(root("User"));
+    assert.equal(kind, "mutation");
+    assert.ok(text.startsWith("mutation {"));
+});
+
+test("subscription() presets kind:subscription", () => {
+    var { kind, text } = subscription(root("User"));
+    assert.equal(kind, "subscription");
+    assert.ok(text.startsWith("subscription {"));
+});
+
+test("mutation() kind cannot be overridden by chunk", () => {
+    var { kind } = mutation(root("User"), { kind: "query" });
+    assert.equal(kind, "mutation");
+});
+
+test("subscription() falls back to Subscription when var defs present", () => {
+    var { text, opName } = subscription(
+        root("User"),
+        varDefs($v("foo","String"))
+    );
+    assert.equal(opName, "Subscription");
+    assert.ok(text.startsWith("subscription Subscription("));
 });

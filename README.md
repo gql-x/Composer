@@ -4,7 +4,7 @@ A DSL for composing GraphQL query strings with nicer DX.
 
 `@gql-x/composer` is a general-purpose GraphQL query composer: it produces plain, spec-compliant GraphQL text suitable for any GraphQL endpoint, any client transport, any tooling.
 
-Think of it as a spiritual successor to the older [`gql-query-builder`](https://www.npmjs.com/package/gql-query-builder) package — solving the same problem (building GraphQL queries from host-language values rather than templated strings), but with better ergonomics around variable hoisting, dynamic composition, and field-level expressivity. None of the code or API is ported or shared; the kinship is in problem space and motivation, not in implementation.
+Think of it as a spiritual successor to the older [`gql-query-builder`](https://www.npmjs.com/package/gql-query-builder) package; it solves the same problem (building GraphQL queries from host-language values rather than templated strings), but with better ergonomics around variable hoisting, dynamic composition, and field-level expressivity. None of the code or API is ported or shared; the kinship is in problem space and motivation, not in implementation.
 
 For design rationale and tradeoffs, see [DESIGN.md](./DESIGN.md). For details on the extension points composer exposes for building higher-level layers on top of it, see [EXTENSIBILITY.md](./EXTENSIBILITY.md).
 
@@ -14,7 +14,7 @@ Two primary goals motivate the design:
 
 1. **Reduce variable bookkeeping.** Annotate a variable's type at its use site; the builder hoists the declaration into the operation's parameter list and deduplicates automatically.
 
-2. **First-class dynamic composition.** Query fragments — arguments, selection-sets, and so on — are plain JS values that can be conditionally included, named, passed around, and combined using ordinary host-language logic. No string templating, no parameter-list maintenance.
+2. **First-class dynamic composition.** Query fragments (arguments, selection-sets, etc) are plain JS values that can be conditionally included, named, passed around, and combined using ordinary host-language logic. No string templating, no parameter-list maintenance.
 
 A third theme runs throughout: meaning is conveyed by explicit names (`selectionSet`, `varArgs`, `litArgs`) rather than syntactic position. This trades raw-GraphQL positional convention for label-driven composition that can be reordered to foreground whatever matters most about a given query.
 
@@ -28,8 +28,8 @@ import { createComposer } from "@gql-x/composer";
 var {
     $f, $t, $v, $m,
     varArgs, litArgs, varDefs,
-    selectionSet, root,
-    queryBuilder,
+    selectionSet, root, operationName,
+    raw, query, mutation, subscription,
     isGQLName,
 } = createComposer();
 ```
@@ -38,22 +38,23 @@ var {
 
 ```js
 // minimal: just the builder + the bits used in the simplest query
-var { queryBuilder, root, selectionSet, } = createComposer();
+var { query, root, selectionSet } = createComposer();
 
-queryBuilder(
+query(
     root("ping"),
     selectionSet("ok")
 )
 // {
-//    text: "{ ping { ok } }",
-//    operationName: "",
-//    resultName: "ping"
+//    text: "query { ping { ok } }",
+//    kind: "query",
+//    opName: null,
+//    resName: "ping"
 // }
 ```
 
 ## At a Glance
 
-Consider a GraphQL query like the one below; fetching a user by ID with a date-bounded sub-selection of recent posts:
+Consider a typical GraphQL query like the one below; fetching a user by ID with a date-bounded sub-selection of recent posts:
 
 ```graphql
 query GetUser(
@@ -82,8 +83,8 @@ A few things stand out as friction:
 Here's the Composer equivalent:
 
 ```js
-queryBuilder(
-    { operationName: "GetUser" },
+query(
+    operationName("GetUser"),
     root("user"),
     varArgs($v("id","userID","ID")),
     selectionSet(
@@ -99,13 +100,13 @@ queryBuilder(
 )
 ```
 
-Variables are declared inline where used, then hoisted into the parameter list (and de-duplicated/de-conflicted) by `queryBuilder()`, so you never have to type both a separate parameter declaration and the use-site reference.
+Variables are declared inline where used, then hoisted into the parameter list (and de-duplicated/de-conflicted) by the builder (`raw()`, `query()`, etc), so you never have to type both a separate parameter declaration and the use-site reference.
 
 ## Fluent Helpers vs. Object Literal Forms
 
 Composer provides two families of helpers, and both produce plain JS object structures that the query-builder consumes:
 
-1. **Option-key helpers** like `varArgs(..)`, `litArgs(..)`, `varDefs(..)`, `selectionSet(..)`, `root(..)`. Each produces a single-property object keyed by its option name. They're passed as variadic arguments to `queryBuilder(..)`.
+1. **Option-key helpers** like `varArgs(..)`, `litArgs(..)`, `varDefs(..)`, `selectionSet(..)`, `root(..)`. Each produces a single-property object keyed by its option name. They're passed as variadic arguments to a builder (`raw(..)`, `query(..)`, etc).
 
     In other words, `varArgs(..)` produces `{ varArgs: .. }`.
 
@@ -117,21 +118,21 @@ Both families are pure object-shape sugar. Every helper has an equivalent object
 
 ```js
 // helper form (recommended)
-queryBuilder(
+raw(
     root("user"),
     varArgs($v("id","ID")),
     selectionSet("firstName","lastName")
 )
 
 // object literal form (also accepted)
-queryBuilder({
+raw({
     root: { field: "user" },
     varArgs: { id: "ID" },
     selectionSet: [ "firstName", "lastName" ]
 })
 
 // mixed (also accepted)
-queryBuilder(
+raw(
     root("user"),
     varArgs({ id: "ID" }),
     { selectionSet: [ "firstName", "lastName" ] }
@@ -142,17 +143,41 @@ The object literal forms are the base. The helpers exist as sugar on top, to red
 
 ## Query Builder Options
 
-`queryBuilder(..)` accepts variadic option-key helpers (or a single options object), and returns a query-builder result object (see below).
+Query Builder's `raw(..)` accepts variadic option-key helpers (or a single options object), and returns a query-builder result object (see below).
+
+**NOTE:** In general, an option-key helper like `{ whatever: .. }` has the preferred `whatever(..)` named function form, as illustrated in the examples below.
 
 The following options are recognized:
 
-* `kind` (string, default: `"query"`): allows `"query"` or `"mutation"`.
+* `kind` (string, default: `"query"`): allows `"query"`, `"mutation"` or `"subscription"`.
 
-* `operationName` (string, default: `""`): the operation name in the query text (e.g., `GetUser`). Pass `null` or `""` to omit, in which case the builder falls back to `Query` / `Mutation` if variable defs are present, or omits the operation header entirely if not.
+    ```js
+    { kind: "query" }
+    ```
+
+    **NOTE:** It's generally preferred to use the scoped query-builder methods `query(..)`, `mutation(..)`, and `subscription(..)`, which each preset the underlying `kind` accordingly:
+
+    ```js
+    // raw({ kind: "query", .. })
+    query({ .. })
+
+    // raw({ kind: "mutation", .. })
+    mutation({ .. })
+
+    // raw({ kind: "subscription", .. })
+    subscription({ .. })
+    ```
+
+* `operationName` (string, default: `null`): the operation name in the query text (e.g., `GetUser`). Pass `null` or `""` to omit, in which case the builder falls back to `Query` / `Mutation` / `Subscription` (based on `kind`) if variable defs are present, or omits the operation header entirely if not. Most easily produced via the `operationName(..)` option-key helper.
+
+    ```js
+    operationName("getUser")
+    // { operationName: "getUser" }
+    ```
 
 * `root` (object): specifies the root field shape. Most easily produced via the `root(..)` option-key helper.
 
-    `root(field)` — bare field:
+    `root(field)` bare field:
 
     ```js
     root("user")
@@ -161,7 +186,7 @@ The following options are recognized:
 
     Produces a root like `user(..) { .. }`.
 
-    `root(field, alias)` — aliased root:
+    `root(field, alias)` aliased root:
 
     ```js
     root("currentUser","user")
@@ -257,7 +282,7 @@ $v("id","userID","ID")
 // type def: $userID: ID, arg: id: $userID
 ```
 
-**NOTE:** Anywhere a type string appears — as long as it doesn't include non-identifier characters like `[` or `!` — a `$t` bare-name token is also accepted. For example: `$t.String`, `$t.DateTime`, `$t.ID`. This can help visually distinguish the type from the surrounding field/variable name strings:
+**NOTE:** Anywhere a type string appears -- as long as it doesn't include non-identifier characters like `[` or `!` -- a `$t` bare-name token is also accepted. For example: `$t.String`, `$t.DateTime`, `$t.ID`. This can help visually distinguish the type from the surrounding field/variable name strings:
 
 ```js
 $v("id",$t.ID)
@@ -279,7 +304,7 @@ A leading `$` on the property name marks it as a manual variable reference (for 
 $t.$orderBy  // renders as: $orderBy
 ```
 
-Bare tokens can appear anywhere a literal value is expected — inside `litArgs`, as type strings in `$v` / variable specs, etc.
+Bare tokens can appear anywhere a literal value is expected: inside `litArgs`, as type strings in `$v` / variable specs, etc.
 
 ### `$m`: Map Literals
 
@@ -378,7 +403,7 @@ $f`myPosts``posts ${varArgs($v("since","DateTime"))}`
 $f("myPosts", "posts", varArgs($v("since","DateTime")))
 ```
 
-The choice between forms is purely stylistic. The tag form is more compact and reads left-to-right as `alias: field` — matching GraphQL's own rendering. The function-call form is immediately readable to anyone familiar with conventional JS and maps directly to how other language ports express the same concept.
+The choice between forms is purely stylistic. The tag form is more compact and reads left-to-right as `alias: field`, matching GraphQL's own rendering. The function-call form is immediately readable to anyone familiar with conventional JS and maps directly to how other language ports express the same concept.
 
 #### Field-Level Selections
 
@@ -438,19 +463,21 @@ myPosts: posts(since: $since, limit: 50) {
 
 ## Query Result Object
 
-`queryBuilder(..)` returns a result object with the following properties:
+The query-builders (`raw()`, `query()`, etc) all return a result object with the following properties:
 
 * `text`: the ready-to-execute query text
 
-* `operationName`: the operation name embedded in the query text (e.g., `GetUser`), to pass along to whatever GraphQL endpoint will execute the query
+* `opName`: the operation name embedded in the query text (e.g., `GetUser`), to pass along to whatever GraphQL endpoint will execute the query
 
-* `resultName`: the result set name (e.g., the root field's alias if one was set, otherwise its bare field name)
+* `resName`: the result set name (e.g., the root field's alias if one was set, otherwise its bare field name)
+
+* `kind`: the kind of query string (`"query"`, `"mutation"`, or `"subscription"`)
 
 For example, this call:
 
 ```js
-queryBuilder(
-    { operationName: "GetUser" },
+query(
+    operationName("GetUser"),
     root("user"),
     varArgs($v("id","ID")),
     selectionSet("firstName","lastName")
@@ -462,8 +489,9 @@ Produces:
 ```js
 {
     text: "query GetUser($id:ID) { user(id:$id) { firstName lastName } }",
-    operationName: "GetUser",
-    resultName: "user",
+    opName: "GetUser",
+    resName: "user",
+    kind: "query"
 }
 ```
 

@@ -30,7 +30,7 @@ function registerPlugin({
 	transport = null,
 	decorate = null,
 } = {}) {
-	var { api: composer, internals: composerInternals, } = composerRegisterPlugin();
+	var { api: composer, _internals: composerInternals, } = composerRegisterPlugin();
 
 	var dbNonPrefixedTypes = [
 		...GQL_BUILTIN_TYPES,
@@ -39,11 +39,11 @@ function registerPlugin({
 
 	var api = prefix(namePrefix);
 
-	var internals = {
+	var _internals = {
 		composer: composerInternals,
 	};
 
-	return { api, internals, };
+	return { api, _internals, };
 
 
 	// ******************************
@@ -51,7 +51,10 @@ function registerPlugin({
 	function prefix(namePrefix) {
 		var prefixedAPI = {
 			prefix,
-			query,
+			raw: makeWrapped("raw"),
+			query: makeWrapped("query"),
+			mutation: makeWrapped("mutation"),
+			subscription: makeWrapped("subscription"),
 			...(transport || {}),
 		};
 
@@ -64,24 +67,26 @@ function registerPlugin({
 
 		// ************************
 
-		function query(...args) {
-			// extract caller-supplied nonPrefixedTypes from chunks,
-			// merge with db's list, pass the merged list down to QB.
-			var callerNonPrefixed = extractNonPrefixed(args);
-			var mergedNonPrefixed = [
-				...dbNonPrefixedTypes,
-				...callerNonPrefixed,
-			];
+		function makeWrapped(entryPoint) {
+			return function wrapped(...args) {
+				// extract caller-supplied nonPrefixedTypes from chunks,
+				// merge with db's list, pass the merged list down to composer.
+				var callerNonPrefixed = extractNonPrefixed(args);
+				var mergedNonPrefixed = [
+					...dbNonPrefixedTypes,
+					...callerNonPrefixed,
+				];
 
-			var dbQuery = composer.queryBuilder(
-				{
-					namePrefix,
-					nonPrefixedTypes: mergedNonPrefixed,
-				},
-				...args
-			);
+				var dbQuery = composer[entryPoint](
+					{
+						namePrefix,
+						nonPrefixedTypes: mergedNonPrefixed,
+					},
+					...args
+				);
 
-			return decorateDBQuery(dbQuery);
+				return decorateDBQuery(dbQuery);
+			};
 		}
 	}
 }

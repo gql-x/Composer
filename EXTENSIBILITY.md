@@ -14,23 +14,23 @@ The composer module exposes two factory functions:
 import { createComposer, registerPlugin } from "@gql-x/composer";
 ```
 
-- `createComposer()` — app-facing. Returns just the public API (helpers + builder).
-- `registerPlugin()` — plugin-facing. Returns `{ api, internals }`.
+- `createComposer()` — app-facing. Returns just the public API (helpers + builders).
+- `registerPlugin()` — plugin-facing. Returns `{ api, _internals }`.
 
-`api` is the same public surface `createComposer()` returns. `internals` exposes hooks that aren't part of the app-facing API, but that plugin authors need to mint their own field tokens, inspect bare-name tokens, and so on.
+`api` is the same public surface `createComposer()` returns. `_internals` exposes hooks that aren't part of the app-facing API, but that plugin authors need to mint their own field tokens, inspect bare-name tokens, and so on.
 
 ```js
-var { api, internals } = registerPlugin();
+var { api, _internals } = registerPlugin();
 
-var { $f, $t, $v, $m, queryBuilder, selectionSet, root, /* .. */ } = api;
-var { makeFieldToken, is$fToken, $fMeta, nameToken, /* .. */ } = internals;
+var { $f, $t, $v, $m, raw, selectionSet, root, /* .. */ } = api;
+var { makeFieldToken, is$fToken, $fMeta, nameToken, /* .. */ } = _internals;
 ```
 
 All per-instance state (token symbols, internal WeakMaps, caches) is closure-private to each `registerPlugin()` / `createComposer()` call. Two composer instances don't share token identities or metadata. This isolation is deliberate and non-negotiable — it means a plugin can safely instantiate its own composer without worrying about colliding with anyone else's.
 
 ## The Composer Internals
 
-The `internals` object exposed by `registerPlugin()` currently contains:
+The `_internals` object exposed by `registerPlugin()` currently contains:
 
 **Field-token internals**
 
@@ -81,10 +81,10 @@ query FindShops($lat: Float, $lng: Float) {
 The composer call we want to enable:
 
 ```js
-queryBuilder(
-    { operationName: "FindShops" },
+query(
+    operationName("FindShops"),
     root("shops"),
-    near("lat", "lng", 5000),
+    near("lat", "lng", 5000),       // <-- plugin!
     selectionSet("name", "address")
 )
 ```
@@ -101,7 +101,7 @@ Two render-protocol seams come into play. The `near` helper needs to:
 import { registerPlugin } from "@gql-x/composer";
 
 function createGeoComposer() {
-    var { api, internals } = registerPlugin();
+    var { api, _internals } = registerPlugin();
     var { $v, varArgs, ...rest } = api;
 
     function near(latVarName, lngVarName, radiusValue) {
@@ -162,10 +162,10 @@ function near(latVarName, lngVarName, radiusValue) {
 ### Step 4: Putting it together
 
 ```js
-var { queryBuilder, root, selectionSet, near } = createGeoComposer();
+var { query, root, selectionSet, operationName, near } = createGeoComposer();
 
-queryBuilder(
-    { operationName: "FindShops" },
+query(
+    operationName("FindShops"),
     root("shops"),
     near("lat", "lng", 5000),
     selectionSet("name", "address")
@@ -177,8 +177,8 @@ The `$lat` and `$lng` variables hoist into the operation parameter list because 
 
 This is a deliberately minimal example. A real plugin would:
 
-- Use `internals.makeFieldToken` to produce a proper `$f`-style token instead of returning a raw chunk shape.
-- Use `internals.is$tToken` so callers could pass `$t.SomeType` in place of literal type strings.
+- Use `_internals.makeFieldToken` to produce a proper `$f`-style token instead of returning a raw chunk shape.
+- Use `_internals.is$tToken` so callers could pass `$t.SomeType` in place of literal type strings.
 - Use the `renderCtx` to defer parts of inner rendering back to composer, instead of building the entire string by hand.
 
 `@gql-x/plugin-defradb`'s `over()` and `$a.*` aggregate helpers are the production reference for all of these.
@@ -215,16 +215,16 @@ It adds three things over bare composer:
 2. **Transport spread** — methods on a transport object are spread directly onto the returned API, so plugin consumers can call `api.exec(...)`, `api.startTransaction(...)`, etc. without the plugin having to expose them manually.
 3. **A `decorate` hook** — runs after prefixing is applied, giving the plugin a chance to attach its own helpers (`$p`, `$a`, `collection()`, whatever) to the prefixed API before returning it.
 
-Conceptually, the DB layer is more like an interface or abstract base class than a finished tool. You wouldn't normally instantiate it directly — its real audience is the package one layer up, which uses it as a base. (You *could* instantiate it directly if schema-name prefixing was the one feature you wanted; nothing stops you.)
+Conceptually, the DB layer is more like an interface or abstract base class than a directly-usable tool. You wouldn't normally instantiate; its real audience is a plugin one layer up, which uses it as a base.
 
 ### Using the DB Layer as a Base
 
-The DB layer exports a single function: `registerPlugin(opts)`. It returns `{ api, internals }`.
+The DB layer exports a single function: `registerPlugin(opts)`. It returns `{ api, _internals }`.
 
 ```js
 import { registerPlugin as dbRegisterPlugin } from "@gql-x/composer/db";
 
-var { api, internals } = dbRegisterPlugin({
+var { api, _internals } = dbRegisterPlugin({
     namePrefix: "Dev_",
     nonPrefixedTypes: [ "JSON", "DateTime" ],
     transport: {
@@ -250,7 +250,7 @@ var { api, internals } = dbRegisterPlugin({
 
 **`transport`** is an object whose methods are spread onto the returned `api`. The DB layer doesn't introspect it — whatever methods the transport provides become methods on the API. A plugin's actual transport implementation lives in the layer above (typically a `*-transport-http` package); the DB layer just wires it up to the API surface.
 
-**`decorate`** is the layering hook. It runs after the DB layer has produced its prefixed API, and gets that prefixed API plus the composer and its internals as arguments. Whatever the decorate function returns becomes the final API. This is where plugin-specific helpers get attached.
+**`decorate`** is the layering hook. It runs after the DB layer has produced its prefixed API, and gets that prefixed API plus the composer API and its internals as arguments. Whatever the decorate function returns becomes the final API. This is where plugin-specific helpers get attached.
 
 ### The `prefix(...)` API
 
@@ -265,7 +265,7 @@ Re-prefixing re-runs the `decorate` hook against the new prefixed API, so any pl
 
 ### The DBQuery Functor
 
-`api.query(...)` wraps composer's `queryBuilder(...)` with the registered `namePrefix` and `nonPrefixedTypes`. The returned query object is a functor with two methods:
+`api.query(...)` wraps composer's `query(...)` with the registered `namePrefix` and `nonPrefixedTypes`; same with `raw(..)`, `mutation(..)`, and `subscription(..)`. The returned query object is a functor with two methods:
 
 - `.map(fn)` — returns a new query whose eventual result will be transformed by `fn`. Repeated `.map(...)` calls compose left-to-right.
 - `.tap(fn)` — derived from `.map(...)`; runs `fn` for side effects (e.g., logging) and passes the query through unchanged.
@@ -298,7 +298,7 @@ Most non-trivial plugins will want the DB layer.
 
 The composer extension story, summarized:
 
-- `registerPlugin()` is the plugin-author entry point. It returns `{ api, internals }`; the internals expose token-minting and token-inspection hooks.
+- `registerPlugin()` is the plugin-author entry point. It returns `{ api, _internals }`; the internals expose token-minting and token-inspection hooks.
 - The render protocol has three seams: `litArgs` values, field-level `argsWrapper`, root chunk `render`. Plugin-defined tokens carry a `.render(...)` method composer dispatches to at the appropriate point.
 - `renderCtx` lets render-protocol tokens delegate sub-rendering back to composer instead of re-implementing it.
 - `@gql-x/composer/db` is an abstract scaffold built on those extension points, providing schema-name prefixing, transport spread, and a `decorate` hook. Most plugins will build on it rather than on bare composer.

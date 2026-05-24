@@ -31,11 +31,11 @@ function createComposer() {
 	return buildComposer().api;
 }
 
-function registerPlugin() {
-	return buildComposer();
+function registerPlugin(opts = {}) {
+	return buildComposer(opts);
 }
 
-function buildComposer() {
+function buildComposer(opts = {}) {
 	// per-composer-instance private state
 	var $fStateSym = Symbol("gql.field.state");
 	var $tNameSym = Symbol("gql.name");
@@ -68,13 +68,13 @@ function buildComposer() {
 
 	var api = {
 		$f, $t, $v, $m,
-		varArgs, litArgs, varDefs,
+		varArgs, litArgs, varDefs, operationName,
 		selectionSet, root,
-		queryBuilder,
+		raw, query, mutation, subscription,
 		isGQLName,
 	};
 
-	var internals = {
+	var _internals = {
 		makeFieldToken,
 		is$fToken,
 		get$fSymbol,
@@ -84,7 +84,7 @@ function buildComposer() {
 		get$tTokenName,
 	};
 
-	return { api, internals, };
+	return { api, _internals, };
 
 
 	// ******************************
@@ -459,7 +459,7 @@ function buildComposer() {
 		}
 	}
 
-	function queryBuilder(...args) {
+	function raw(...args) {
 		var {
 			root,
 			namePrefix = "",
@@ -475,16 +475,16 @@ function buildComposer() {
 			litInputs = null,
 			litFilters = null,
 			selectionSet = "_docID",
-		} = mergeChunks(args,"queryBuilder(..) arg");
+		} = mergeChunks(args,"raw(..) arg");
 
 		namePrefix = namePrefix || "";
 
 		if (!(root && typeof root == "object" && typeof root.field == "string" && root.field != "")) {
-			throw new Error("queryBuilder requires root.field");
+			throw new Error("raw requires root.field");
 		}
 
 		if (!isGQLName(root.field)) {
-			throw new Error(`queryBuilder: invalid GQL name for root field: ${root.field}`);
+			throw new Error(`raw: invalid GQL name for root field: ${root.field}`);
 		}
 
 		var omitOperationName = (operationName == null || operationName === "");
@@ -597,7 +597,11 @@ function buildComposer() {
 		if (operationName == null) {
 			operationName = (
 				allVarDefsStr ?
-					(kind == "mutation" ? "Mutation" : "Query") :
+					(
+						kind == "mutation" ? "Mutation" :
+						kind == "subscription" ? "Subscription" :
+						"Query"
+					) :
 					null
 			);
 		}
@@ -613,10 +617,25 @@ function buildComposer() {
 
 		return {
 			text: queryText,
-			operationName,
-			resultName: (rootAlias || rootField),
+			opName: operationName,
+			resName: (rootAlias || rootField),
 			kind,
 		};
+	}
+
+	function query(...args) {
+		// preset kind:"query" — overrides any kind in passed chunks/objects
+		return raw(...args,{ kind: "query", });
+	}
+
+	function mutation(...args) {
+		// preset kind:"mutation" — overrides any kind in passed chunks/objects
+		return raw(...args,{ kind: "mutation", });
+	}
+
+	function subscription(...args) {
+		// preset kind:"subscription" — overrides any kind in passed chunks/objects
+		return raw(...args,{ kind: "subscription", });
 	}
 
 	function renderArgsFromFieldMeta(meta,namePrefix,nonPrefixedTypes,sourceLabel) {
@@ -1246,4 +1265,8 @@ function litArgs(...chunks) {
 
 function varDefs(...chunks) {
 	return { varDefs: mergeChunks(chunks,"varDefs(..) part"), };
+}
+
+function operationName(name) {
+	return { operationName: name, };
 }

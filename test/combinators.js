@@ -10,6 +10,7 @@ var {
 	varDefs,
 	selectionSet,
 	root,
+	operationName,
 	$m,
 	$v,
 } = createComposer();
@@ -137,4 +138,23 @@ test("root 2-arg form with alias", () => {
 		root("User","Account"),
 		{ root: { field: "User", alias: "Account" } }
 	);
+});
+
+
+// ************************
+// operationName
+// ************************
+
+test("operationName() produces { operationName: .. }", () => {
+    assert.deepEqual(
+        operationName("GetUser"),
+        { operationName: "GetUser" }
+    );
+});
+
+test("operationName(null) produces { operationName: null }", () => {
+    assert.deepEqual(
+        operationName(null),
+        { operationName: null }
+    );
 });
