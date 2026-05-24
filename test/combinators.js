@@ -146,15 +146,15 @@ test("root 2-arg form with alias", () => {
 // ************************
 
 test("operationName() produces { operationName: .. }", () => {
-    assert.deepEqual(
-        operationName("GetUser"),
-        { operationName: "GetUser" }
-    );
+	assert.deepEqual(
+		operationName("GetUser"),
+		{ operationName: "GetUser" }
+	);
 });
 
 test("operationName(null) produces { operationName: null }", () => {
-    assert.deepEqual(
-        operationName(null),
-        { operationName: null }
-    );
+	assert.deepEqual(
+		operationName(null),
+		{ operationName: null }
+	);
 });

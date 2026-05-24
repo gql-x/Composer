@@ -61,8 +61,8 @@ test("registerPlugin()._internals exposes plugin hooks", () => {
 });
 
 test("registerPlugin() accepts opts without throwing", () => {
-    assert.doesNotThrow(() => registerPlugin({}));
-    assert.doesNotThrow(() => registerPlugin({ unknownFutureOpt: true }));
+	assert.doesNotThrow(() => registerPlugin({}));
+	assert.doesNotThrow(() => registerPlugin({ unknownFutureOpt: true }));
 });
 
 

@@ -24,10 +24,10 @@ test("registerPlugin() returns the right shape", () => {
 });
 
 test("_internals.composer exposes plugin hooks", () => {
-    var { _internals } = registerPlugin();
-    assert.equal(typeof _internals.composer.makeFieldToken, "function");
-    assert.equal(typeof _internals.composer.is$fToken, "function");
-    assert.ok(_internals.composer.$fMeta instanceof WeakMap);
+	var { _internals } = registerPlugin();
+	assert.equal(typeof _internals.composer.makeFieldToken, "function");
+	assert.equal(typeof _internals.composer.is$fToken, "function");
+	assert.ok(_internals.composer.$fMeta instanceof WeakMap);
 });
 
 test("api.raw() with plain-string selection", () => {
@@ -65,25 +65,25 @@ test("api.query() with caller-passed nonPrefixedTypes merging", () => {
 });
 
 test("api.mutation() presets kind:mutation with prefix", () => {
-    var { api } = registerPlugin({ namePrefix: "Dev_", });
-    var { text, kind } = api.mutation({
-        root: { field: "User" },
-        operationName: null,
-        selectionSet: [ "name" ]
-    });
-    assert.equal(kind, "mutation");
-    assert.ok(normalize(text).startsWith("mutation { User: Dev_User"));
+	var { api } = registerPlugin({ namePrefix: "Dev_", });
+	var { text, kind } = api.mutation({
+		root: { field: "User" },
+		operationName: null,
+		selectionSet: [ "name" ]
+	});
+	assert.equal(kind, "mutation");
+	assert.ok(normalize(text).startsWith("mutation { User: Dev_User"));
 });
 
 test("api.subscription() presets kind:subscription", () => {
-    var { api } = registerPlugin();
-    var { kind, text } = api.subscription({
-        root: { field: "User" },
-        operationName: null,
-        selectionSet: [ "name" ]
-    });
-    assert.equal(kind, "subscription");
-    assert.ok(text.startsWith("subscription {"));
+	var { api } = registerPlugin();
+	var { kind, text } = api.subscription({
+		root: { field: "User" },
+		operationName: null,
+		selectionSet: [ "name" ]
+	});
+	assert.equal(kind, "subscription");
+	assert.ok(text.startsWith("subscription {"));
 });
 
 test("api.prefix() returns a sibling API with different prefix", () => {
@@ -210,11 +210,11 @@ test("GQL builtin type not prefixed in varDefs", () => {
 });
 
 test("api.mutation() kind cannot be overridden by chunk", () => {
-    var { api } = registerPlugin();
-    var { kind } = api.mutation({
-        root: { field: "User" },
-        kind: "query",
-        selectionSet: [ "name" ]
-    });
-    assert.equal(kind, "mutation");
+	var { api } = registerPlugin();
+	var { kind } = api.mutation({
+		root: { field: "User" },
+		kind: "query",
+		selectionSet: [ "name" ]
+	});
+	assert.equal(kind, "mutation");
 });

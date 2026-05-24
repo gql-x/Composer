@@ -391,27 +391,27 @@ test("conflicting type definitions throw", () => {
 });
 
 test("mutation() presets kind:mutation", () => {
-    var { kind, text } = mutation(root("User"));
-    assert.equal(kind, "mutation");
-    assert.ok(text.startsWith("mutation {"));
+	var { kind, text } = mutation(root("User"));
+	assert.equal(kind, "mutation");
+	assert.ok(text.startsWith("mutation {"));
 });
 
 test("subscription() presets kind:subscription", () => {
-    var { kind, text } = subscription(root("User"));
-    assert.equal(kind, "subscription");
-    assert.ok(text.startsWith("subscription {"));
+	var { kind, text } = subscription(root("User"));
+	assert.equal(kind, "subscription");
+	assert.ok(text.startsWith("subscription {"));
 });
 
 test("mutation() kind cannot be overridden by chunk", () => {
-    var { kind } = mutation(root("User"), { kind: "query" });
-    assert.equal(kind, "mutation");
+	var { kind } = mutation(root("User"), { kind: "query" });
+	assert.equal(kind, "mutation");
 });
 
 test("subscription() falls back to Subscription when var defs present", () => {
-    var { text, opName } = subscription(
-        root("User"),
-        varDefs($v("foo","String"))
-    );
-    assert.equal(opName, "Subscription");
-    assert.ok(text.startsWith("subscription Subscription("));
+	var { text, opName } = subscription(
+		root("User"),
+		varDefs($v("foo","String"))
+	);
+	assert.equal(opName, "Subscription");
+	assert.ok(text.startsWith("subscription Subscription("));
 });
