@@ -19,7 +19,10 @@
 			"types": "./src/composer.d.ts",
 			"default": "./src/composer.js"
 		},
-		"./db": "./src/db.js"
+		"./db": {
+			"types": "./src/db.d.ts",
+			"default": "./src/db.js"
+		}
 	},
 	"repository": {
 		"url": "git+https://github.com/gql-x/composer.git"
