@@ -507,6 +507,19 @@ This package also ships an abstract DB-shaped layer (`@gql-x/composer/db`) that 
 
 The extension points, the DB layer's full surface, and the render protocol that makes deep customization possible are all documented in [EXTENSIBILITY.md](./EXTENSIBILITY.md).
 
+## TypeScript Support
+
+Type definitions are bundled with the package. TypeScript projects will pick them up automatically — no separate `@types/` install needed.
+
+The types cover the full public API surface, including:
+
+- Autocomplete on all helpers and the `$t` proxy
+- Branded clause types with a structural escape hatch for raw object literals
+- Detection of common construction mistakes (e.g., missing `root`)
+- Both calling forms of `$f` (function call and tagged template)
+
+The runtime is plain JavaScript; the types are an additive aid for editor tooling and don't affect behavior.
+
 ## Tests
 
 A test suite is included in this repository, as well as the npm package distribution. The default test behavior runs the test suite using the files in `src/`.

@@ -1,7 +1,7 @@
 {
 	"name": "@gql-x/composer",
 	"description": "An extensible DSL for composing GraphQL strings with nicer DX",
-	"version": "0.0.0-pre-202605241435",
+	"version": "0.0.0-pre-202605261139",
 	"main": "./src/composer.js",
 	"type": "module",
 	"scripts": {
@@ -11,8 +11,14 @@
 		"@gql-x/composer": "./src/composer.js"
 	},
 	"exports": {
-		".": "./src/composer.js",
-		"./composer": "./src/composer.js",
+		".": {
+			"types": "./src/composer.d.ts",
+			"default": "./src/composer.js"
+		},
+		"./composer": {
+			"types": "./src/composer.d.ts",
+			"default": "./src/composer.js"
+		},
 		"./db": "./src/db.js"
 	},
 	"repository": {
