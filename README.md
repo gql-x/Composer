@@ -59,12 +59,12 @@ Consider a typical GraphQL query like the one below; fetching a user by ID with 
 ```graphql
 query GetUser(
     $userID: ID,
-    $sinceDate: DateTime
+    $sinceTS: Int
 ) {
     user(id: $userID) {
         firstName
         lastName
-        recentPosts: posts(since: $sinceDate) {
+        recentPosts: posts(since: $sinceTS) {
             title
             publishedAt
         }
@@ -74,7 +74,7 @@ query GetUser(
 
 A few things stand out as friction:
 
-* **Variable duplication.** `$userID` is declared once but its definition (`$userID: ID`) lives far away from its use site. Same for `$sinceDate`.
+* **Variable duplication.** `$userID` is declared once but its definition (`$userID: ID`) lives far away from its use site. Same for `$sinceTS`.
 
 * **Sigil bookkeeping.** Every variable carries a `$` everywhere it appears. Easy to typo, easy to forget.
 
@@ -92,7 +92,7 @@ query(
         "lastName",
         $m(
             $f`recentPosts``posts ${
-                varArgs($v("since","sinceDate","DateTime"))
+                varArgs($v("since","sinceTS","Int"))
             }`,
             [ "title", "publishedAt" ]
         )
@@ -282,7 +282,7 @@ $v("id","userID","ID")
 // type def: $userID: ID, arg: id: $userID
 ```
 
-**NOTE:** Anywhere a type string appears -- as long as it doesn't include non-identifier characters like `[` or `!` -- a `$t` bare-name token is also accepted. For example: `$t.String`, `$t.DateTime`, `$t.ID`. This can help visually distinguish the type from the surrounding field/variable name strings:
+**NOTE:** Anywhere a type string appears -- as long as it doesn't include non-identifier characters like `[` or `!` -- a `$t` bare-name token is also accepted. For example: `$t.String`, `$t.Int`, `$t.ID`. This can help visually distinguish the type from the surrounding field/variable name strings:
 
 ```js
 $v("id",$t.ID)
@@ -395,12 +395,12 @@ $f`ownerEmail``email`
 $f("ownerEmail", "email")
 
 // field with args, no alias
-$f`posts ${varArgs($v("since","DateTime"))}`
-$f("posts", varArgs($v("since","DateTime")))
+$f`posts ${varArgs($v("sinceTS","Int"))}`
+$f("posts", varArgs($v("sinceTS","Int")))
 
 // alias + field + args
-$f`myPosts``posts ${varArgs($v("since","DateTime"))}`
-$f("myPosts", "posts", varArgs($v("since","DateTime")))
+$f`myPosts``posts ${varArgs($v("sinceTS","Int"))}`
+$f("myPosts", "posts", varArgs($v("sinceTS","Int")))
 ```
 
 The choice between forms is purely stylistic. The tag form is more compact and reads left-to-right as `alias: field`, matching GraphQL's own rendering. The function-call form is immediately readable to anyone familiar with conventional JS and maps directly to how other language ports express the same concept.
@@ -426,7 +426,7 @@ selectionSet(
     // ..
     $m(
         $f`myPosts``posts ${[
-            varArgs($v("since","DateTime")),
+            varArgs($v("sinceTS","Int")),
             litArgs($m("limit",50))
         ]}`,
         [ "title", "publishedAt" ]
@@ -444,7 +444,7 @@ selectionSet(
     // ..
     $m(
         $f`myPosts``posts ${{
-            varArgs: { since: "DateTime" },
+            varArgs: { sinceTS: "Int" },
             litArgs: { limit: 50 }
         }}`,
         [ "title", "publishedAt" ]
@@ -455,7 +455,7 @@ selectionSet(
 Either form above produces this field-level reference with sub-selection:
 
 ```graphql
-myPosts: posts(since: $since, limit: 50) {
+myPosts: posts(since: $sinceTS, limit: 50) {
     title
     publishedAt
 }
