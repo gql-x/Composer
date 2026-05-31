@@ -2,7 +2,7 @@ import assert from "node:assert";
 import { module } from "./runner.js";
 import { createComposer, } from "@gql-x/composer";
 
-export const test = module("directives");
+export const test = module("units");
 
 var { $f, $t, $v, $m, } = createComposer();
 

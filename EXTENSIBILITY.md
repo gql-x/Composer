@@ -49,7 +49,7 @@ You won't need every internal for every plugin. The minimum set most plugins rea
 
 ## The Render Protocol
 
-Composer is, by design, ignorant of plugin-specific syntax. It doesn't know what an aggregate is, what a filter looks like, what a custom directive wraps. But composer's renderer can still produce output for plugin-defined constructs, because it dispatches to a small set of **render protocol** seams at well-defined points.
+Composer is, by design, ignorant of plugin-specific syntax. It doesn't know what an aggregate is, what a filter looks like, what a custom *unit* (i.e., `$v()`, etc) wraps. But composer's renderer can still produce output for plugin-defined constructs, because it dispatches to a small set of **render protocol** seams at well-defined points.
 
 A render-protocol token is just a plain JS object with a `.render(...)` method (and sometimes additional fields composer reads). Composer's renderer looks for these objects at three specific positions and, if it finds one, delegates to it instead of doing default rendering.
 
